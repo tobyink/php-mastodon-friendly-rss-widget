@@ -4,7 +4,7 @@
  * Plugin Name: Mastodon-Friendly RSS Widget
  * Plugin URI: https://github.com/tobyink/php-mastodon-friendly-rss-widget
  * Description: Subclass of the built-in RSS Widget, but copes better with Mastodon feeds.
- * Version: 0.1
+ * Version: 0.2
  * Requires at least: 6.1
  * Requires PHP: 8.0
  * Author: Toby Inkster
@@ -13,11 +13,21 @@
  * License URI: https://www.gnu.org/licenses/gpl-2.0.html
  */
 
+// Note that a lot of code is wholesale copied and pasted from the
+// original class and related functions. That is because the originals
+// are extremely monolithic, making it hard to tweak just a few
+// small details.
+//
+// Changes are noted with 'ZZZ'.
+//
+
 require_once( ABSPATH . '/wp-includes/widgets/class-wp-widget-rss.php' );
 
+// ZZZ - class name
 class WP_Widget_RSS_MastodonFriendly extends WP_Widget_RSS {
 	public function __construct() {
 		$widget_ops = array(
+			// ZZZ - description
 			'description'                 => __( 'Mastodon feed.' ),
 			'customize_selective_refresh' => true,
 			'show_instance_in_rest'       => true,
@@ -26,6 +36,7 @@ class WP_Widget_RSS_MastodonFriendly extends WP_Widget_RSS {
 			'width'  => 400,
 			'height' => 200,
 		);
+		// ZZZ - identifier and title
 		WP_Widget::__construct( 'rss_mastodon', __( 'RSS (Mastodon Friendly)' ), $widget_ops, $control_ops );
 	}
 
@@ -111,10 +122,11 @@ class WP_Widget_RSS_MastodonFriendly extends WP_Widget_RSS {
 		if ( 'html5' === $format ) {
 			// The title may be filtered: Strip out HTML and make sure the aria-label is never empty.
 			$title      = trim( strip_tags( $title ) );
-			$aria_label = $title ? $title : __( 'RSS Feed' );
+			$aria_label = $title ? $title : __( 'Mastodon Feed' ); // ZZZ - default title
 			echo '<nav aria-label="' . esc_attr( $aria_label ) . '">';
 		}
 
+		// ZZZ- - call custom function to build output
 		wp_widget_rss_mastodon_output( $rss, $instance );
 
 		if ( 'html5' === $format ) {
@@ -143,6 +155,7 @@ class WP_Widget_RSS_MastodonFriendly extends WP_Widget_RSS {
 		}
 		$instance['number'] = $this->number;
 
+		// ZZZ - call custom function
 		wp_widget_rss_mastodon_form( $instance );
 	}
 }
@@ -196,6 +209,10 @@ function wp_widget_rss_mastodon_output( $rss, $args = array() ) {
 		$link = esc_url( strip_tags( $link ) );
 
 		$title = esc_html( trim( strip_tags( $item->get_title() ) ) );
+		// ZZZ - don't set default title to "Untitled". Instead use date and time.
+		if ( empty( $title ) ) {
+			$title = date_i18n( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ), $item->get_date( 'U' ) );
+		}
 
 		$desc = html_entity_decode( $item->get_description(), ENT_QUOTES, get_option( 'blog_charset' ) );
 		$desc = esc_attr( wp_trim_words( $desc, 55, ' [&hellip;]' ) );
@@ -209,6 +226,7 @@ function wp_widget_rss_mastodon_output( $rss, $args = array() ) {
 				$summary = substr( $summary, 0, -5 ) . '[&hellip;]';
 			}
 
+			// ZZZ - make links clickable
 			$summary = '<div class="rssSummary">' . make_clickable( esc_html( $summary ) ) . '</div>';
 		}
 
@@ -217,12 +235,8 @@ function wp_widget_rss_mastodon_output( $rss, $args = array() ) {
 			$date = $item->get_date( 'U' );
 
 			if ( $date ) {
-				$date = ' <span class="rss-date">' . date_i18n( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ), $date ) . '</span>';
+				$date = ' <span class="rss-date">' . date_i18n( get_option( 'date_format' ), $date ) . '</span>';
 			}
-		}
-
-		if ( empty( $title ) ) {
-			$title = date_i18n( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ), $item->get_date( 'U' ) );
 		}
 
 		$author = '';
@@ -247,6 +261,7 @@ function wp_widget_rss_mastodon_output( $rss, $args = array() ) {
 	unset( $rss );
 }
 
+// ZZZ - changed a bunch of classes/ids/names from "rss" to "rss_mastodon"
 function wp_widget_rss_mastodon_form( $args, $inputs = null ) {
 	$default_inputs = array(
 		'url'          => true,
